@@ -1,70 +1,39 @@
 import base64
+import utils
 
 # Primes
 p = 17
 q = 19
 e = 217 # 65537
-
-def extended_gcd(a, b):
-    """
-    returns (gcd, x, y) such that a*x + b*y = gcd
-    """
-    if a == 0:
-        return b, 0, 1
-    
-    gcd, x1, y1 = extended_gcd(b % a, a)
-    
-    # Atualiza x e y usando os resultados da recursão
-    x = y1 - (b // a) * x1
-    y = x1
-    
-    return gcd, x, y
-
-def modular_inverse(a, m):
-    """
-    returns modular inverse of 'a' mod 'm'
-    """
-    gcd, x, y = extended_gcd(a, m)
-    
-    if gcd != 1:
-        raise ValueError(f"Modular invese of {a} mod {m} does not exist (MDC != 1)")
-    else:
-        return x % m
-
-def textToDecimalAscii(text: str):
-    asciiCodes = [0] *len(text)
-    for i in range(len(text)):
-        asciiCodes[i] = ord(text[i])
-    return asciiCodes
-
-def squareAndMultiply(base, exponent, mod):
-
-    binaryExponentString = bin(exponent)[2:]
-    buffer = 1
-    for i in range(len(binaryExponentString)):
-        if binaryExponentString[i] == "1":
-            buffer = ((buffer*buffer)*base) % mod
-        if binaryExponentString[i] == "0":
-            buffer = (buffer*buffer) % mod
-    return buffer
-    
-# Retrieve Keys
+# Mocked Keys
 n = p*q
 eulerTotient = (p-1)*(q-1) #288
-d = modular_inverse(e, eulerTotient)
+d = utils.modular_inverse(e, eulerTotient) # Private Key
+utils.modular_inverse(e, eulerTotient) # is e valid?
+
+# Retrieve Keys
+number, exp = utils.load_public_key_pem("public_key.pem")
+print(exp)
 
 def RSAalgorithmEncrypt(text: str):
 
-    decimals = textToDecimalAscii(text)
+    decimals = utils.textToDecimalAscii(text)
     for i in range(len(decimals)):
-        decimals[i] = squareAndMultiply(decimals[i], e, n)
-    combined_bytes = b"".join(d.to_bytes(2, 'big') for d in decimals)
-    base64String = base64.b64encode(combined_bytes).decode("utf-8")
-    return base64String
+        decimals[i] = utils.squareAndMultiply(decimals[i], e, n)
 
-def RSAalgorithmDecrypt(textBase64):
+    combined_bytes = b"".join(decimal.to_bytes(2, 'big') for decimal in decimals)
+    return base64.b64encode(combined_bytes).decode("utf-8")
 
-    print("Im trying")
+def RSAalgorithmDecrypt(textBase64: str):
+
+    decryptedText = ""
+    data_bytes = base64.b64decode(textBase64)
+    for i in range(0, len(data_bytes), 2):
+        chunk = data_bytes[i:i+2]
+        decimal = int.from_bytes(chunk, 'big')
+        decriptedDecimal = utils.squareAndMultiply(decimal, d, n)
+        decryptedText += chr(decriptedDecimal)
+    return decryptedText
 
 myString = "fsaidf"
 print(RSAalgorithmEncrypt(myString))
